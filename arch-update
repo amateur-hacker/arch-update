@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Define colors
+GREEN=$(tput setaf 2)  # Green (Success)
+YELLOW=$(tput setaf 3) # Yellow (Warning)
+RED=$(tput setaf 1)    # Red (Error)
+BLUE=$(tput setaf 4)   # Blue (Info)
+RESET=$(tput sgr0)     # Reset to default color
+
+# Function to print a new line
+new_line() {
+  echo ""
+}
+
+# Function to print success messages in green
+success_message() {
+  echo -e "${GREEN}$1${RESET}"
+}
+
+# Function to print warning messages in yellow
+warning_message() {
+  echo -e "${YELLOW}$1${RESET}"
+}
+
+# Function to print error messages in red and exit
+error_message() {
+  echo -e "${RED}Error: $1${RESET}"
+  exit 1
+}
+
+# Function to print informational messages in blue
+info_message() {
+  echo -e "${BLUE}$1${RESET}"
+}
+
+# Function to display help message
+show_help() {
+  echo "Usage: arch-update [OPTIONS]"
+  echo ""
+  echo "This script will update your Arch Linux system and its mirrors based on your country."
+  echo ""
+  echo "Options:"
+  echo "  -h, --help    Show this help message and exit."
+  echo ""
+  echo "If you wish to continue with the update process, the script will ask for your confirmation."
+  echo "It will update system packages and AUR packages using paru."
+}
+
+# Check if the user requested help
+if [[ "$#" -gt 0 && ("$1" == "-h" || "$1" == "--help") ]]; then
+  show_help
+  exit 0
+fi
+
+# Ask user to proceed with the script
+info_message "This script will update your Arch Linux system and its mirrors. You may need to enter your password for sudo operations."
+read -rp "Would you like to continue? [Y/n] " response
+response=${response,,} # Convert to lowercase
+if [[ "$response" != "y" && "$response" != "" ]]; then
+  echo "Exiting script."
+  exit 0
+fi
+new_line
+
+# Request sudo password once and store it for later use
+echo "Please enter your password for sudo operations:"
+sudo -v
+
+# Function to install a package if not already installed
+ensure_package_installed() {
+  local package_name="$1"
+  local command_name="$2"
+
+  if ! command -v "$command_name" &>/dev/null; then
+    new_line
+    warning_message "'$command_name' not found. The package '$package_name' is required."
+    read -rp "Do you want to install '$package_name'? [Y/n] " response
+    new_line
+    response=${response,,} # Convert to lowercase
+    if [[ "$response" == "y" || "$response" == "" ]]; then
+      sudo pacman -S "$package_name" --noconfirm
+      success_message "Package '$package_name' installed successfully."
+    else
+      error_message "'$package_name' is required. Exiting."
+    fi
+  fi
+}
+
+# Ensure necessary dependencies are installed
+ensure_package_installed "curl" "curl"
+ensure_package_installed "geoip" "geoiplookup"
+ensure_package_installed "pacman-contrib" "rankmirrors"
+
+# Determine user's country dynamically
+new_line
+info_message "Determining your current location..."
+GEOIP_OUTPUT=$(geoiplookup "$(curl -s ifconfig.me)")
+
+# Extract country code and country name
+COUNTRY_CODE=$(echo "$GEOIP_OUTPUT" | awk -F ': ' '{print $2}' | awk -F ', ' '{print $1}' | tr -d ' ')
+COUNTRY_NAME=$(echo "$GEOIP_OUTPUT" | awk -F ': ' '{print $2}' | awk -F ', ' '{print $2}')
+
+if [[ -z "$COUNTRY_CODE" || -z "$COUNTRY_NAME" ]]; then
+  error_message "Unable to determine your country dynamically."
+fi
+
+success_message "Detected country code: $COUNTRY_CODE"
+success_message "Detected country name: $COUNTRY_NAME"
+new_line
+
+# Update Arch Linux mirrors based on location
+info_message "Fetching the latest mirror list for $COUNTRY_NAME..."
+curl -s "https://archlinux.org/mirrorlist/?country=${COUNTRY_CODE}&protocol=https&use_mirror_status=on" |
+  sed -e 's/^#Server/Server/' -e '/^#/d' |
+  rankmirrors -n 5 - |
+  sudo tee /etc/pacman.d/mirrorlist >/dev/null
+success_message "Mirror list updated successfully."
+new_line
+
+# Check if system packages need an update
+info_message "Synchronizing system and AUR package databases..."
+sudo pacman -Syy >/dev/null
+paru -Syy >/dev/null
+
+info_message "Checking for system package updates..."
+if pacman -Qu | grep -q .; then
+  info_message "System packages have updates available. Updating now..."
+  new_line
+  sudo pacman -Su --noconfirm
+  success_message "System packages updated successfully."
+else
+  info_message "No updates available for system packages."
+fi
+new_line
+
+# Update AUR packages using paru
+if command -v paru &>/dev/null; then
+  info_message "Checking for AUR package updates..."
+  if paru -Qu | grep -q .; then
+    info_message "AUR packages have updates available. Updating now..."
+    paru -Su --noconfirm
+    new_line
+    success_message "AUR packages updated successfully."
+  else
+    info_message "No updates available for AUR packages."
+  fi
+else
+  warning_message "'paru' is not installed. Skipping AUR updates."
+fi
+new_line
+
+success_message "System is up-to-date!"
