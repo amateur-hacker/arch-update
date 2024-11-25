@@ -14,7 +14,7 @@
 To install `arch-update`, run the following command to download, make the script executable, and move it to `/usr/bin` for global access:
 
 ```bash
-curl -O https://raw.githubusercontent.com/amateur-hacker/arch-update/main/arch-update \
+curl -O https://raw.githubusercontent.com/amateur-hacker/arch-update/main/arch-update\
 && chmod +x arch-update && sudo mv arch-update /usr/bin/arch-update
 ```
 
