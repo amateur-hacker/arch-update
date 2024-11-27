@@ -140,8 +140,8 @@ if command -v paru &>/dev/null; then
   info_message "Checking for AUR package updates..."
   if paru -Qu | grep -q .; then
     info_message "AUR packages have updates available. Updating now..."
-    paru -Su --noconfirm
     new_line
+    paru -Su --noconfirm
     success_message "AUR packages updated successfully."
   else
     info_message "No updates available for AUR packages."
