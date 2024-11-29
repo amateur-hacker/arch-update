@@ -35,6 +35,42 @@ info_message() {
   echo -e "${BLUE}$1${RESET}"
 }
 
+# Function to handle pacman database lock
+handle_pacman_lock() {
+  local lock_file="/var/lib/pacman/db.lck"
+  if [[ -e "$lock_file" ]]; then
+    new_line
+    warning_message "Pacman database lock file detected at '$lock_file'. This might have been caused by an interrupted operation."
+    read -rp "Do you want to remove the lock file and continue? [Y/n] " response
+    response=${response,,}
+    if [[ "$response" == "y" || "$response" == "" ]]; then
+      sudo rm "$lock_file"
+      success_message "Pacman database lock file removed."
+    else
+      error_message "Cannot proceed with the lock file in place. Exiting."
+    fi
+  fi
+}
+
+# Function to install a package if not already installed
+ensure_package_installed() {
+  local package_name="$1"
+  local command_name="$2"
+
+  if ! command -v "$command_name" &>/dev/null; then
+    new_line
+    warning_message "'$command_name' not found. The package '$package_name' is required."
+    read -rp "Do you want to install '$package_name'? [Y/n] " response
+    response=${response,,}
+    if [[ "$response" == "y" || "$response" == "" ]]; then
+      sudo pacman -S "$package_name" --noconfirm
+      success_message "Package '$package_name' installed successfully."
+    else
+      error_message "'$package_name' is required. Exiting."
+    fi
+  fi
+}
+
 # Function to display help message
 show_help() {
   echo "Usage: arch-update [OPTIONS]"
@@ -54,10 +90,13 @@ if [[ "$#" -gt 0 && ("$1" == "-h" || "$1" == "--help") ]]; then
   exit 0
 fi
 
+# clear the screen
+clear
+
 # Ask user to proceed with the script
 info_message "This script will update your Arch Linux system and its mirrors. You may need to enter your password for sudo operations."
 read -rp "Would you like to continue? [Y/n] " response
-response=${response,,} # Convert to lowercase
+response=${response,,}
 if [[ "$response" != "y" && "$response" != "" ]]; then
   echo "Exiting script."
   exit 0
@@ -68,25 +107,8 @@ new_line
 echo "Please enter your password for sudo operations:"
 sudo -v
 
-# Function to install a package if not already installed
-ensure_package_installed() {
-  local package_name="$1"
-  local command_name="$2"
-
-  if ! command -v "$command_name" &>/dev/null; then
-    new_line
-    warning_message "'$command_name' not found. The package '$package_name' is required."
-    read -rp "Do you want to install '$package_name'? [Y/n] " response
-    new_line
-    response=${response,,} # Convert to lowercase
-    if [[ "$response" == "y" || "$response" == "" ]]; then
-      sudo pacman -S "$package_name" --noconfirm
-      success_message "Package '$package_name' installed successfully."
-    else
-      error_message "'$package_name' is required. Exiting."
-    fi
-  fi
-}
+# Handle pacman database lock
+handle_pacman_lock
 
 # Ensure necessary dependencies are installed
 ensure_package_installed "curl" "curl"
