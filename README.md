@@ -54,6 +54,7 @@ Fetching the latest mirror list for India...
 Mirror list updated successfully.
 
 Synchronizing system and AUR package databases...
+
 Checking for system package updates...
 System packages have updates available. Updating now...
 System packages updated successfully.
@@ -69,7 +70,7 @@ System is up-to-date!
 
 - `curl`: Required for fetching the country and IP data.
 - `geoip`: Used to determine the user's country based on IP.
-- `pacman-contrib`: Includes the `rankmirrors` utility to fetch the fastest mirrors.
+- `pacman-contrib`: Includes the `rankmirrors` utility to rank the fastest mirrors.
 - `paru`: Optional AUR helper for updating AUR packages.
 
 ## License
