@@ -141,12 +141,13 @@ curl -s "https://archlinux.org/mirrorlist/?country=${COUNTRY_CODE}&protocol=http
 success_message "Mirror list updated successfully."
 new_line
 
-# Check if system packages need an update
+# Synchronize system and AUR package databases
 info_message "Synchronizing system and AUR package databases..."
 sudo pacman -Syy >/dev/null
 paru -Syy >/dev/null
 new_line
 
+# Check if system packages need an update
 info_message "Checking for system package updates..."
 if pacman -Qu | grep -q .; then
   info_message "System packages have updates available. Updating now..."
