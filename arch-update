@@ -123,11 +123,11 @@ new_line
 info_message "Synchronizing system and AUR package databases..."
 sudo pacman -Syy >/dev/null
 paru -Syy >/dev/null
+new_line
 
 info_message "Checking for system package updates..."
 if pacman -Qu | grep -q .; then
   info_message "System packages have updates available. Updating now..."
-  new_line
   sudo pacman -Su --noconfirm
   success_message "System packages updated successfully."
 else
@@ -140,7 +140,6 @@ if command -v paru &>/dev/null; then
   info_message "Checking for AUR package updates..."
   if paru -Qu | grep -q .; then
     info_message "AUR packages have updates available. Updating now..."
-    new_line
     paru -Su --noconfirm
     success_message "AUR packages updated successfully."
   else
